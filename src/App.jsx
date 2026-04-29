@@ -25,40 +25,135 @@ const MealPlannerApp = () => {
   const [carbsPercent, setCarbsPercent] = useState(40);
   const [fatPercent, setFatPercent] = useState(20);
 
-  // Meal database with detailed nutritional info (grams + calories)
+  // Weekly check-in state
+  const [weeklyWeights, setWeeklyWeights] = useState([]);
+  const [currentWeekWeight, setCurrentWeekWeight] = useState('');
+  const [calorieAdjustment, setCalorieAdjustment] = useState(0);
+
+  // Meal database with detailed nutritional info and calorie-dense ingredient weights
   const mealDatabase = {
     breakfast: [
-      { name: 'Oatmeal with berries', grams: 300, calories: 350, protein: 10, carbs: 45, fat: 3 },
-      { name: 'Eggs + toast', grams: 250, calories: 380, protein: 18, carbs: 30, fat: 12 },
-      { name: 'Greek yogurt + granola', grams: 280, calories: 360, protein: 20, carbs: 35, fat: 5 },
-      { name: 'Protein pancakes', grams: 250, calories: 380, protein: 25, carbs: 40, fat: 8 },
-      { name: 'Smoothie bowl', grams: 350, calories: 400, protein: 15, carbs: 50, fat: 6 },
-      { name: 'Cottage cheese + fruit', grams: 220, calories: 320, protein: 22, carbs: 25, fat: 4 },
+      {
+        name: 'Oatmeal with berries', grams: 300, calories: 350, protein: 10, carbs: 45, fat: 3,
+        ingredients: 'Oats (80g), Blueberries (100g), Strawberries (120g)'
+      },
+      {
+        name: 'Eggs + toast', grams: 250, calories: 380, protein: 18, carbs: 30, fat: 12,
+        ingredients: 'Eggs (100g), Whole wheat bread (50g)'
+      },
+      {
+        name: 'Greek yogurt + granola', grams: 280, calories: 360, protein: 20, carbs: 35, fat: 5,
+        ingredients: 'Greek yogurt (200g), Granola (80g)'
+      },
+      {
+        name: 'Protein pancakes', grams: 250, calories: 380, protein: 25, carbs: 40, fat: 8,
+        ingredients: 'Protein powder (30g), Eggs (50g), Banana (120g)'
+      },
+      {
+        name: 'Smoothie bowl', grams: 350, calories: 400, protein: 15, carbs: 50, fat: 6,
+        ingredients: 'Protein powder (30g), Banana (100g), Berries (120g), Almond milk (200ml)'
+      },
+      {
+        name: 'Cottage cheese + fruit', grams: 220, calories: 320, protein: 22, carbs: 25, fat: 4,
+        ingredients: 'Cottage cheese (150g), Peaches (70g)'
+      },
     ],
     lunch: [
-      { name: 'Chicken breast + rice', grams: 400, calories: 520, protein: 40, carbs: 50, fat: 5 },
-      { name: 'Turkey sandwich', grams: 380, calories: 480, protein: 30, carbs: 40, fat: 8 },
-      { name: 'Tuna salad', grams: 320, calories: 420, protein: 35, carbs: 15, fat: 10 },
-      { name: 'Beef tacos', grams: 350, calories: 550, protein: 35, carbs: 45, fat: 15 },
-      { name: 'Salmon + sweet potato', grams: 420, calories: 580, protein: 35, carbs: 40, fat: 12 },
-      { name: 'Tofu stir-fry', grams: 380, calories: 460, protein: 28, carbs: 45, fat: 8 },
+      {
+        name: 'Chicken breast + rice', grams: 400, calories: 520, protein: 40, carbs: 50, fat: 5,
+        ingredients: 'Chicken breast (200g), Brown rice (150g)'
+      },
+      {
+        name: 'Turkey sandwich', grams: 380, calories: 480, protein: 30, carbs: 40, fat: 8,
+        ingredients: 'Ground turkey (150g), Whole wheat bread (80g), Lettuce & tomato (150g)'
+      },
+      {
+        name: 'Tuna salad', grams: 320, calories: 420, protein: 35, carbs: 15, fat: 10,
+        ingredients: 'Canned tuna (150g), Mixed greens (100g), Olive oil (15g)'
+      },
+      {
+        name: 'Beef tacos', grams: 350, calories: 550, protein: 35, carbs: 45, fat: 15,
+        ingredients: 'Ground beef (150g), Taco shells (50g), Cheddar cheese (50g), Salsa (100g)'
+      },
+      {
+        name: 'Salmon + sweet potato', grams: 420, calories: 580, protein: 35, carbs: 40, fat: 12,
+        ingredients: 'Salmon fillet (180g), Sweet potato (180g), Olive oil (15g)'
+      },
+      {
+        name: 'Tofu stir-fry', grams: 380, calories: 460, protein: 28, carbs: 45, fat: 8,
+        ingredients: 'Firm tofu (200g), Mixed veggies (150g), Brown rice (100g)'
+      },
     ],
     dinner: [
-      { name: 'Grilled chicken + broccoli + rice', grams: 450, calories: 620, protein: 45, carbs: 55, fat: 8 },
-      { name: 'Steak + sweet potato', grams: 420, calories: 680, protein: 50, carbs: 45, fat: 18 },
-      { name: 'Salmon + asparagus + pasta', grams: 430, calories: 650, protein: 40, carbs: 50, fat: 15 },
-      { name: 'Lean beef + veggies', grams: 400, calories: 580, protein: 45, carbs: 40, fat: 10 },
-      { name: 'Pork tenderloin + quinoa', grams: 380, calories: 610, protein: 42, carbs: 45, fat: 12 },
-      { name: 'Turkey meatballs + pasta', grams: 420, calories: 600, protein: 38, carbs: 50, fat: 10 },
+      {
+        name: 'Grilled chicken + broccoli + rice', grams: 450, calories: 620, protein: 45, carbs: 55, fat: 8,
+        ingredients: 'Chicken breast (200g), Brown rice (150g), Broccoli (150g), Olive oil (10g)'
+      },
+      {
+        name: 'Steak + sweet potato', grams: 420, calories: 680, protein: 50, carbs: 45, fat: 18,
+        ingredients: 'Ribeye steak (200g), Sweet potato (150g), Olive oil (15g)'
+      },
+      {
+        name: 'Salmon + asparagus + pasta', grams: 430, calories: 650, protein: 40, carbs: 50, fat: 15,
+        ingredients: 'Salmon fillet (180g), Pasta (100g), Asparagus (150g), Olive oil (15g)'
+      },
+      {
+        name: 'Lean beef + veggies', grams: 400, calories: 580, protein: 45, carbs: 40, fat: 10,
+        ingredients: 'Lean ground beef (150g), Zucchini (150g), Bell peppers (100g)'
+      },
+      {
+        name: 'Pork tenderloin + quinoa', grams: 380, calories: 610, protein: 42, carbs: 45, fat: 12,
+        ingredients: 'Pork tenderloin (180g), Quinoa (100g), Veggies (100g)'
+      },
+      {
+        name: 'Turkey meatballs + pasta', grams: 420, calories: 600, protein: 38, carbs: 50, fat: 10,
+        ingredients: 'Ground turkey (150g), Pasta (100g), Marinara sauce (100g)'
+      },
     ],
     snack: [
-      { name: 'Protein shake', grams: 300, calories: 280, protein: 25, carbs: 25, fat: 2 },
-      { name: 'Greek yogurt', grams: 200, calories: 240, protein: 15, carbs: 10, fat: 3 },
-      { name: 'Almonds', grams: 28, calories: 160, protein: 8, carbs: 8, fat: 14 },
-      { name: 'Apple + peanut butter', grams: 180, calories: 280, protein: 8, carbs: 35, fat: 8 },
-      { name: 'Cottage cheese', grams: 150, calories: 220, protein: 20, carbs: 5, fat: 4 },
-      { name: 'String cheese + crackers', grams: 80, calories: 240, protein: 12, carbs: 20, fat: 8 },
+      {
+        name: 'Protein shake', grams: 300, calories: 280, protein: 25, carbs: 25, fat: 2,
+        ingredients: 'Protein powder (30g), Almond milk (300ml)'
+      },
+      {
+        name: 'Greek yogurt', grams: 200, calories: 240, protein: 15, carbs: 10, fat: 3,
+        ingredients: 'Greek yogurt (200g)'
+      },
+      {
+        name: 'Almonds', grams: 28, calories: 160, protein: 8, carbs: 8, fat: 14,
+        ingredients: 'Almonds (28g)'
+      },
+      {
+        name: 'Apple + peanut butter', grams: 180, calories: 280, protein: 8, carbs: 35, fat: 8,
+        ingredients: 'Apple (150g), Peanut butter (30g)'
+      },
+      {
+        name: 'Cottage cheese', grams: 150, calories: 220, protein: 20, carbs: 5, fat: 4,
+        ingredients: 'Cottage cheese (150g)'
+      },
+      {
+        name: 'String cheese + crackers', grams: 80, calories: 240, protein: 12, carbs: 20, fat: 8,
+        ingredients: 'String cheese (28g), Whole grain crackers (50g)'
+      },
     ],
+  };
+
+  // Load weigh-in history from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('weeklyWeights');
+    if (saved) {
+      try {
+        setWeeklyWeights(JSON.parse(saved));
+      } catch (e) {
+        console.error('Error loading weigh-in history:', e);
+      }
+    }
+  }, []);
+
+  // Save weigh-in history to localStorage
+  const saveWeighInHistory = (weights) => {
+    setWeeklyWeights(weights);
+    localStorage.setItem('weeklyWeights', JSON.stringify(weights));
   };
 
   // Load shared plan from URL
@@ -89,7 +184,7 @@ const MealPlannerApp = () => {
     }
   }, []);
 
-  // Mifflin-St Jeor formula
+  // Mifflin-St Jeor formula with 15% conservative buffer
   const calculateTDEE = () => {
     const w = unit === 'imperial' ? parseFloat(weight) : parseFloat(weight) * 2.20462;
     const h = unit === 'imperial' ? parseFloat(height) : parseFloat(height) * 39.3701;
@@ -111,7 +206,9 @@ const MealPlannerApp = () => {
     };
 
     const tdeeValue = bmr * activityMultipliers[activityLevel];
-    return Math.round(tdeeValue);
+    // Apply 15% conservative buffer for realistic progress
+    const conservativeTdee = tdeeValue * 0.85;
+    return Math.round(conservativeTdee);
   };
 
   // Calculate macros based on slider percentages
@@ -248,6 +345,63 @@ const MealPlannerApp = () => {
       setMealPlan(generatedPlan);
       setGroceryList(groceries);
     }
+  };
+
+  // Log weekly weigh-in and calculate adjustment
+  const handleLogWeight = () => {
+    if (!currentWeekWeight || !weight) return;
+
+    const newEntry = {
+      date: new Date().toISOString().split('T')[0],
+      weight: parseFloat(currentWeekWeight),
+    };
+
+    const updated = [...weeklyWeights, newEntry];
+    saveWeighInHistory(updated);
+
+    // Analyze trend if 2+ weeks of data
+    if (updated.length >= 2) {
+      const recentWeights = updated.slice(-4); // Last 4 weigh-ins
+      const firstWeight = recentWeights[0].weight;
+      const lastWeight = recentWeights[recentWeights.length - 1].weight;
+      const weeksOfData = recentWeights.length - 1;
+      const actualLossPerWeek = (firstWeight - lastWeight) / weeksOfData;
+
+      // Expected loss is 1 lb/week (or ~0.45 kg) for a -500 cal deficit
+      const expectedLossPerWeek = goal === 'loss' ? 1 : 0;
+
+      if (actualLossPerWeek < expectedLossPerWeek * 0.8 && actualLossPerWeek !== expectedLossPerWeek) {
+        // Underperforming: suggest -250 cal reduction
+        setCalorieAdjustment(-250);
+      } else if (actualLossPerWeek > expectedLossPerWeek * 1.2 && actualLossPerWeek > 0) {
+        // Overperforming: suggest +200 cal increase
+        setCalorieAdjustment(200);
+      } else {
+        setCalorieAdjustment(0);
+      }
+    }
+
+    setCurrentWeekWeight('');
+  };
+
+  // Get weight trend analysis
+  const getWeightTrendAnalysis = () => {
+    if (weeklyWeights.length < 2) return null;
+
+    const recentWeights = weeklyWeights.slice(-4);
+    const firstWeight = recentWeights[0].weight;
+    const lastWeight = recentWeights[recentWeights.length - 1].weight;
+    const weeksOfData = recentWeights.length - 1;
+    const actualLossPerWeek = (firstWeight - lastWeight) / weeksOfData;
+    const expectedLossPerWeek = goal === 'loss' ? 1 : 0;
+
+    return {
+      actualLossPerWeek: Math.round(actualLossPerWeek * 10) / 10,
+      expectedLossPerWeek,
+      weeksOfData,
+      totalLoss: Math.round((firstWeight - lastWeight) * 10) / 10,
+      onTrack: actualLossPerWeek >= expectedLossPerWeek * 0.8,
+    };
   };
 
   // Handle share
@@ -561,6 +715,80 @@ const MealPlannerApp = () => {
                     </div>
                   )}
 
+                  {/* Weekly Check-in */}
+                  {macros && goal === 'loss' && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                      <h3 className="font-semibold text-blue-900 mb-3">Weekly Check-in</h3>
+
+                      {getWeightTrendAnalysis() && (
+                        <div className="mb-4 p-3 bg-white rounded border border-blue-100">
+                          {(() => {
+                            const analysis = getWeightTrendAnalysis();
+                            return (
+                              <>
+                                <p className="text-xs font-medium text-blue-700 mb-2">
+                                  Based on {analysis.weeksOfData} week{analysis.weeksOfData !== 1 ? 's' : ''} of data:
+                                </p>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  <div>
+                                    <p className="text-blue-600 text-xs">Expected Loss</p>
+                                    <p className="font-bold text-blue-900">{analysis.expectedLossPerWeek} {unit === 'imperial' ? 'lb' : 'kg'}/week</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-blue-600 text-xs">Actual Loss</p>
+                                    <p className={`font-bold ${analysis.onTrack ? 'text-green-600' : 'text-orange-600'}`}>
+                                      {analysis.actualLossPerWeek} {unit === 'imperial' ? 'lb' : 'kg'}/week
+                                    </p>
+                                  </div>
+                                </div>
+                                {!analysis.onTrack && calorieAdjustment < 0 && (
+                                  <p className="text-xs text-orange-700 mt-2 bg-orange-50 p-2 rounded">
+                                    💡 <strong>Not quite on track:</strong> Try reducing calories by <strong>{Math.abs(calorieAdjustment)}</strong> to {macros.calories + calorieAdjustment} kcal/day.
+                                  </p>
+                                )}
+                                {analysis.onTrack && (
+                                  <p className="text-xs text-green-700 mt-2 bg-green-50 p-2 rounded">
+                                    ✓ <strong>On track!</strong> Keep it up with current targets.
+                                  </p>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          step="0.1"
+                          placeholder={`Enter this week's weight (${unit === 'imperial' ? 'lbs' : 'kg'})`}
+                          value={currentWeekWeight}
+                          onChange={(e) => setCurrentWeekWeight(e.target.value)}
+                          className="flex-1 px-3 py-2 border border-blue-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <button
+                          onClick={handleLogWeight}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm transition"
+                        >
+                          Log Weight
+                        </button>
+                      </div>
+
+                      {weeklyWeights.length > 0 && (
+                        <div className="mt-3 p-2 bg-white rounded border border-blue-100 text-xs">
+                          <p className="text-blue-700 font-medium mb-2">Recent weigh-ins:</p>
+                          <div className="space-y-1">
+                            {weeklyWeights.slice(-4).map((entry, idx) => (
+                              <p key={idx} className="text-blue-600">
+                                {new Date(entry.date).toLocaleDateString()}: <strong>{entry.weight}</strong> {unit === 'imperial' ? 'lbs' : 'kg'}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Macros */}
                   <h3 className="font-semibold text-slate-900 mb-4">Daily Macro Targets</h3>
                   <div className="space-y-3">
@@ -653,18 +881,20 @@ const MealPlannerApp = () => {
 
                         <div className="space-y-2 text-sm">
                           {['breakfast', 'lunch', 'dinner', 'snack'].map((mealType) => (
-                            <div key={mealType} className="flex justify-between items-center text-slate-700 bg-slate-50 px-3 py-2 rounded text-xs">
+                            <div key={mealType} className="flex justify-between items-start text-slate-700 bg-slate-50 px-3 py-2 rounded text-xs">
                               <div className="flex-1">
                                 <p className="capitalize font-medium text-slate-600 mb-1">{mealType}</p>
-                                <p className="text-slate-800">{dayPlan.meals[mealType].name}</p>
-                                <p className="text-slate-500 mt-1">
-                                  {dayPlan.meals[mealType].grams}g · {dayPlan.meals[mealType].calories} kcal ·
-                                  {dayPlan.meals[mealType].protein}P/{dayPlan.meals[mealType].carbs}C/{dayPlan.meals[mealType].fat}F
+                                <p className="text-slate-800 font-medium">{dayPlan.meals[mealType].name}</p>
+                                <p className="text-slate-500 mt-1 text-xs">
+                                  {dayPlan.meals[mealType].ingredients}
+                                </p>
+                                <p className="text-slate-600 mt-1 font-medium">
+                                  {dayPlan.meals[mealType].calories} kcal · {dayPlan.meals[mealType].protein}g P / {dayPlan.meals[mealType].carbs}g C / {dayPlan.meals[mealType].fat}g F
                                 </p>
                               </div>
                               <button
                                 onClick={() => handleSwapMeal(dayIndex, mealType)}
-                                className="p-2 hover:bg-slate-200 rounded transition flex-shrink-0 ml-2"
+                                className="p-2 hover:bg-slate-200 rounded transition flex-shrink-0 ml-2 mt-2"
                                 title="Swap meal"
                               >
                                 <RefreshCw className="w-4 h-4 text-slate-500" />
