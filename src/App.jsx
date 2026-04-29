@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Share2, RefreshCw, Trash2, Plus } from 'lucide-react';
+import { Download, Share2, RefreshCw, Trash2, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 
 const MealPlannerApp = () => {
   // Form state
   const [weight, setWeight] = useState('170');
+  const [goalWeight, setGoalWeight] = useState('160');
   const [height, setHeight] = useState('70');
   const [age, setAge] = useState('30');
   const [sex, setSex] = useState('male');
-  const [goal, setGoal] = useState('maintenance');
+  const [goal, setGoal] = useState('loss');
   const [activityLevel, setActivityLevel] = useState('moderate');
   const [unit, setUnit] = useState('imperial');
 
@@ -17,40 +18,46 @@ const MealPlannerApp = () => {
   const [mealPlan, setMealPlan] = useState(null);
   const [groceryList, setGroceryList] = useState(null);
   const [shareUrl, setShareUrl] = useState('');
+  const [expandedMacroSlider, setExpandedMacroSlider] = useState(false);
 
-  // Meal database
+  // Macro slider state (as percentages)
+  const [proteinPercent, setProteinPercent] = useState(40);
+  const [carbsPercent, setCarbsPercent] = useState(40);
+  const [fatPercent, setFatPercent] = useState(20);
+
+  // Meal database with detailed nutritional info (grams + calories)
   const mealDatabase = {
     breakfast: [
-      { name: 'Oatmeal with berries', protein: 10, carbs: 45, fat: 3 },
-      { name: 'Eggs + toast', protein: 18, carbs: 30, fat: 12 },
-      { name: 'Greek yogurt + granola', protein: 20, carbs: 35, fat: 5 },
-      { name: 'Protein pancakes', protein: 25, carbs: 40, fat: 8 },
-      { name: 'Smoothie bowl', protein: 15, carbs: 50, fat: 6 },
-      { name: 'Cottage cheese + fruit', protein: 22, carbs: 25, fat: 4 },
+      { name: 'Oatmeal with berries', grams: 300, calories: 350, protein: 10, carbs: 45, fat: 3 },
+      { name: 'Eggs + toast', grams: 250, calories: 380, protein: 18, carbs: 30, fat: 12 },
+      { name: 'Greek yogurt + granola', grams: 280, calories: 360, protein: 20, carbs: 35, fat: 5 },
+      { name: 'Protein pancakes', grams: 250, calories: 380, protein: 25, carbs: 40, fat: 8 },
+      { name: 'Smoothie bowl', grams: 350, calories: 400, protein: 15, carbs: 50, fat: 6 },
+      { name: 'Cottage cheese + fruit', grams: 220, calories: 320, protein: 22, carbs: 25, fat: 4 },
     ],
     lunch: [
-      { name: 'Chicken breast + rice', protein: 40, carbs: 50, fat: 5 },
-      { name: 'Turkey sandwich', protein: 30, carbs: 40, fat: 8 },
-      { name: 'Tuna salad', protein: 35, carbs: 15, fat: 10 },
-      { name: 'Beef tacos', protein: 35, carbs: 45, fat: 15 },
-      { name: 'Salmon + sweet potato', protein: 35, carbs: 40, fat: 12 },
-      { name: 'Tofu stir-fry', protein: 28, carbs: 45, fat: 8 },
+      { name: 'Chicken breast + rice', grams: 400, calories: 520, protein: 40, carbs: 50, fat: 5 },
+      { name: 'Turkey sandwich', grams: 380, calories: 480, protein: 30, carbs: 40, fat: 8 },
+      { name: 'Tuna salad', grams: 320, calories: 420, protein: 35, carbs: 15, fat: 10 },
+      { name: 'Beef tacos', grams: 350, calories: 550, protein: 35, carbs: 45, fat: 15 },
+      { name: 'Salmon + sweet potato', grams: 420, calories: 580, protein: 35, carbs: 40, fat: 12 },
+      { name: 'Tofu stir-fry', grams: 380, calories: 460, protein: 28, carbs: 45, fat: 8 },
     ],
     dinner: [
-      { name: 'Grilled chicken + broccoli + rice', protein: 45, carbs: 55, fat: 8 },
-      { name: 'Steak + sweet potato', protein: 50, carbs: 45, fat: 18 },
-      { name: 'Salmon + asparagus + pasta', protein: 40, carbs: 50, fat: 15 },
-      { name: 'Lean beef + veggies', protein: 45, carbs: 40, fat: 10 },
-      { name: 'Pork tenderloin + quinoa', protein: 42, carbs: 45, fat: 12 },
-      { name: 'Turkey meatballs + pasta', protein: 38, carbs: 50, fat: 10 },
+      { name: 'Grilled chicken + broccoli + rice', grams: 450, calories: 620, protein: 45, carbs: 55, fat: 8 },
+      { name: 'Steak + sweet potato', grams: 420, calories: 680, protein: 50, carbs: 45, fat: 18 },
+      { name: 'Salmon + asparagus + pasta', grams: 430, calories: 650, protein: 40, carbs: 50, fat: 15 },
+      { name: 'Lean beef + veggies', grams: 400, calories: 580, protein: 45, carbs: 40, fat: 10 },
+      { name: 'Pork tenderloin + quinoa', grams: 380, calories: 610, protein: 42, carbs: 45, fat: 12 },
+      { name: 'Turkey meatballs + pasta', grams: 420, calories: 600, protein: 38, carbs: 50, fat: 10 },
     ],
     snack: [
-      { name: 'Protein shake', protein: 25, carbs: 25, fat: 2 },
-      { name: 'Greek yogurt', protein: 15, carbs: 10, fat: 3 },
-      { name: 'Almonds', protein: 8, carbs: 8, fat: 14 },
-      { name: 'Apple + peanut butter', protein: 8, carbs: 35, fat: 8 },
-      { name: 'Cottage cheese', protein: 20, carbs: 5, fat: 4 },
-      { name: 'String cheese + crackers', protein: 12, carbs: 20, fat: 8 },
+      { name: 'Protein shake', grams: 300, calories: 280, protein: 25, carbs: 25, fat: 2 },
+      { name: 'Greek yogurt', grams: 200, calories: 240, protein: 15, carbs: 10, fat: 3 },
+      { name: 'Almonds', grams: 28, calories: 160, protein: 8, carbs: 8, fat: 14 },
+      { name: 'Apple + peanut butter', grams: 180, calories: 280, protein: 8, carbs: 35, fat: 8 },
+      { name: 'Cottage cheese', grams: 150, calories: 220, protein: 20, carbs: 5, fat: 4 },
+      { name: 'String cheese + crackers', grams: 80, calories: 240, protein: 12, carbs: 20, fat: 8 },
     ],
   };
 
@@ -62,12 +69,16 @@ const MealPlannerApp = () => {
       try {
         const data = JSON.parse(atob(shared));
         setWeight(String(data.user.weight));
+        setGoalWeight(String(data.user.goalWeight));
         setHeight(String(data.user.height));
         setAge(String(data.user.age));
         setSex(data.user.sex);
         setGoal(data.user.goal);
         setActivityLevel(data.user.activityLevel);
         setUnit(data.user.unit);
+        setProteinPercent(data.user.proteinPercent || 40);
+        setCarbsPercent(data.user.carbsPercent || 40);
+        setFatPercent(data.user.fatPercent || 20);
         setTdee(data.tdee);
         setMacros(data.macros);
         setMealPlan(data.mealPlan);
@@ -80,8 +91,8 @@ const MealPlannerApp = () => {
 
   // Mifflin-St Jeor formula
   const calculateTDEE = () => {
-    const w = unit === 'imperial' ? weight : weight * 2.20462;
-    const h = unit === 'imperial' ? height : height * 39.3701;
+    const w = unit === 'imperial' ? parseFloat(weight) : parseFloat(weight) * 2.20462;
+    const h = unit === 'imperial' ? parseFloat(height) : parseFloat(height) * 39.3701;
     const a = parseInt(age);
 
     let bmr;
@@ -103,37 +114,41 @@ const MealPlannerApp = () => {
     return Math.round(tdeeValue);
   };
 
-  // Calculate macros based on goal
+  // Calculate macros based on slider percentages
   const calculateMacros = (tdeeValue) => {
-    let proteinRatio, carbRatio, fatRatio;
-
-    switch (goal) {
-      case 'loss':
-        proteinRatio = 0.4;
-        carbRatio = 0.4;
-        fatRatio = 0.2;
-        break;
-      case 'gain':
-        proteinRatio = 0.25;
-        carbRatio = 0.45;
-        fatRatio = 0.3;
-        break;
-      case 'recomp':
-        proteinRatio = 0.35;
-        carbRatio = 0.4;
-        fatRatio = 0.25;
-        break;
-      default: // maintenance
-        proteinRatio = 0.3;
-        carbRatio = 0.4;
-        fatRatio = 0.3;
-    }
+    const proteinCalories = (tdeeValue * proteinPercent) / 100;
+    const carbCalories = (tdeeValue * carbsPercent) / 100;
+    const fatCalories = (tdeeValue * fatPercent) / 100;
 
     return {
-      protein: Math.round((tdeeValue * proteinRatio) / 4),
-      carbs: Math.round((tdeeValue * carbRatio) / 4),
-      fat: Math.round((tdeeValue * fatRatio) / 9),
+      protein: Math.round(proteinCalories / 4),
+      carbs: Math.round(carbCalories / 4),
+      fat: Math.round(fatCalories / 9),
       calories: tdeeValue,
+      percentages: {
+        protein: proteinPercent,
+        carbs: carbsPercent,
+        fat: fatPercent,
+      },
+    };
+  };
+
+  // Calculate fat loss timeline
+  const calculateFatLossTimeline = (tdeeValue) => {
+    const currentW = unit === 'imperial' ? parseFloat(weight) : parseFloat(weight) * 2.20462;
+    const goalW = unit === 'imperial' ? parseFloat(goalWeight) : parseFloat(goalWeight) * 2.20462;
+    const weightToLose = currentW - goalW;
+
+    // Typical deficit is 500 kcal/day = 1 lb/week loss
+    const dailyDeficit = goal === 'loss' ? 500 : 0;
+    const weeklyLossRate = dailyDeficit * 7 / 3500; // 1 lb = 3500 kcal
+    const daysToGoal = weeklyLossRate > 0 ? Math.round((weightToLose / weeklyLossRate) * 7) : 0;
+
+    return {
+      weightToLose: Math.round(weightToLose * 10) / 10,
+      weeklyLossRate: Math.round(weeklyLossRate * 10) / 10,
+      daysToGoal,
+      targetCalories: Math.round(tdeeValue - dailyDeficit),
     };
   };
 
@@ -169,38 +184,39 @@ const MealPlannerApp = () => {
     const ingredients = {};
 
     const ingredientMap = {
-      'Oatmeal with berries': ['Rolled oats', 'Blueberries', 'Strawberries'],
-      'Eggs + toast': ['Eggs', 'Whole wheat bread'],
-      'Greek yogurt + granola': ['Greek yogurt', 'Granola'],
-      'Protein pancakes': ['Protein powder', 'Eggs', 'Banana'],
-      'Smoothie bowl': ['Protein powder', 'Banana', 'Mixed berries', 'Almond milk'],
-      'Cottage cheese + fruit': ['Cottage cheese', 'Peaches', 'Blueberries'],
-      'Chicken breast + rice': ['Chicken breast', 'Brown rice'],
-      'Turkey sandwich': ['Ground turkey', 'Whole wheat bread', 'Lettuce', 'Tomato'],
-      'Tuna salad': ['Canned tuna', 'Mixed greens', 'Olive oil'],
-      'Beef tacos': ['Ground beef', 'Taco shells', 'Cheddar cheese'],
-      'Salmon + sweet potato': ['Salmon fillet', 'Sweet potato'],
-      'Tofu stir-fry': ['Firm tofu', 'Mixed vegetables', 'Brown rice'],
-      'Grilled chicken + broccoli + rice': ['Chicken breast', 'Broccoli', 'Brown rice'],
-      'Steak + sweet potato': ['Ribeye steak', 'Sweet potato'],
-      'Salmon + asparagus + pasta': ['Salmon fillet', 'Asparagus', 'Whole wheat pasta'],
-      'Lean beef + veggies': ['Lean ground beef', 'Zucchini', 'Bell peppers'],
-      'Pork tenderloin + quinoa': ['Pork tenderloin', 'Quinoa'],
-      'Turkey meatballs + pasta': ['Ground turkey', 'Whole wheat pasta', 'Marinara sauce'],
-      'Protein shake': ['Protein powder', 'Almond milk'],
-      'Greek yogurt': ['Greek yogurt'],
-      'Almonds': ['Almonds'],
-      'Apple + peanut butter': ['Apples', 'Peanut butter'],
-      'Cottage cheese': ['Cottage cheese'],
-      'String cheese + crackers': ['String cheese', 'Whole grain crackers'],
+      'Oatmeal with berries': { 'Rolled oats': 80, 'Blueberries': 100, 'Strawberries': 100 },
+      'Eggs + toast': { 'Eggs': 100, 'Whole wheat bread': 50 },
+      'Greek yogurt + granola': { 'Greek yogurt': 200, 'Granola': 50 },
+      'Protein pancakes': { 'Protein powder': 30, 'Eggs': 50, 'Banana': 100 },
+      'Smoothie bowl': { 'Protein powder': 30, 'Banana': 100, 'Mixed berries': 100, 'Almond milk': 200 },
+      'Cottage cheese + fruit': { 'Cottage cheese': 150, 'Peaches': 80, 'Blueberries': 50 },
+      'Chicken breast + rice': { 'Chicken breast': 200, 'Brown rice': 150 },
+      'Turkey sandwich': { 'Ground turkey': 150, 'Whole wheat bread': 80, 'Lettuce': 50, 'Tomato': 100 },
+      'Tuna salad': { 'Canned tuna': 150, 'Mixed greens': 100, 'Olive oil': 15 },
+      'Beef tacos': { 'Ground beef': 150, 'Taco shells': 50, 'Cheddar cheese': 50 },
+      'Salmon + sweet potato': { 'Salmon fillet': 180, 'Sweet potato': 150 },
+      'Tofu stir-fry': { 'Firm tofu': 200, 'Mixed vegetables': 150, 'Brown rice': 100 },
+      'Grilled chicken + broccoli + rice': { 'Chicken breast': 200, 'Broccoli': 150, 'Brown rice': 150 },
+      'Steak + sweet potato': { 'Ribeye steak': 200, 'Sweet potato': 150 },
+      'Salmon + asparagus + pasta': { 'Salmon fillet': 180, 'Asparagus': 150, 'Whole wheat pasta': 100 },
+      'Lean beef + veggies': { 'Lean ground beef': 150, 'Zucchini': 150, 'Bell peppers': 100 },
+      'Pork tenderloin + quinoa': { 'Pork tenderloin': 180, 'Quinoa': 100 },
+      'Turkey meatballs + pasta': { 'Ground turkey': 150, 'Whole wheat pasta': 100, 'Marinara sauce': 100 },
+      'Protein shake': { 'Protein powder': 30, 'Almond milk': 300 },
+      'Greek yogurt': { 'Greek yogurt': 200 },
+      'Almonds': { 'Almonds': 28 },
+      'Apple + peanut butter': { 'Apples': 150, 'Peanut butter': 30 },
+      'Cottage cheese': { 'Cottage cheese': 150 },
+      'String cheese + crackers': { 'String cheese': 28, 'Whole grain crackers': 50 },
     };
 
     for (let dayPlan of plan) {
       for (let mealType in dayPlan.meals) {
         const mealName = dayPlan.meals[mealType].name;
         if (ingredientMap[mealName]) {
-          for (let ingredient of ingredientMap[mealName]) {
-            ingredients[ingredient] = (ingredients[ingredient] || 0) + 1;
+          for (let ingredient in ingredientMap[mealName]) {
+            const amount = ingredientMap[mealName][ingredient];
+            ingredients[ingredient] = (ingredients[ingredient] || 0) + amount;
           }
         }
       }
@@ -208,7 +224,7 @@ const MealPlannerApp = () => {
 
     return Object.entries(ingredients)
       .sort((a, b) => b[1] - a[1])
-      .map(([name, count]) => `${name} (${count})`);
+      .map(([name, grams]) => `${name} (${Math.round(grams)}g)`);
   };
 
   // Handle calculation
@@ -224,6 +240,16 @@ const MealPlannerApp = () => {
     setGroceryList(groceries);
   };
 
+  // Regenerate meal plan only
+  const handleRegenerateMealPlan = () => {
+    if (macros) {
+      const generatedPlan = generateMealPlan(macros);
+      const groceries = generateGroceryList(generatedPlan);
+      setMealPlan(generatedPlan);
+      setGroceryList(groceries);
+    }
+  };
+
   // Handle share
   const handleShare = () => {
     if (!mealPlan || !macros) return;
@@ -232,7 +258,7 @@ const MealPlannerApp = () => {
       tdee,
       macros,
       mealPlan,
-      user: { weight, height, age, sex, goal, activityLevel, unit },
+      user: { weight, goalWeight, height, age, sex, goal, activityLevel, unit, proteinPercent, carbsPercent, fatPercent },
     };
 
     const encoded = btoa(JSON.stringify(shareData));
@@ -274,9 +300,12 @@ const MealPlannerApp = () => {
     a.click();
   };
 
+  // Get fat loss timeline if applicable
+  const fatLossTimeline = goal === 'loss' && tdee ? calculateFatLossTimeline(tdee) : null;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-slate-900">Macro Calculator</h1>
@@ -317,12 +346,24 @@ const MealPlannerApp = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Weight ({unit === 'imperial' ? 'lbs' : 'kg'})
+                    Current Weight ({unit === 'imperial' ? 'lbs' : 'kg'})
                   </label>
                   <input
                     type="number"
                     value={weight}
                     onChange={(e) => setWeight(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Goal Weight ({unit === 'imperial' ? 'lbs' : 'kg'})
+                  </label>
+                  <input
+                    type="number"
+                    value={goalWeight}
+                    onChange={(e) => setGoalWeight(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -390,6 +431,78 @@ const MealPlannerApp = () => {
                   </select>
                 </div>
 
+                {macros && (
+                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                    <button
+                      onClick={() => setExpandedMacroSlider(!expandedMacroSlider)}
+                      className="w-full flex items-center justify-between font-semibold text-slate-700 hover:text-slate-900"
+                    >
+                      <span>Adjust Macros</span>
+                      {expandedMacroSlider ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                    </button>
+
+                    {expandedMacroSlider && (
+                      <div className="mt-4 space-y-4">
+                        <div>
+                          <div className="flex justify-between mb-2">
+                            <label className="text-sm font-medium text-slate-700">Protein</label>
+                            <span className="text-sm font-bold text-red-600">{proteinPercent}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={proteinPercent}
+                            onChange={(e) => setProteinPercent(parseInt(e.target.value))}
+                            className="w-full"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between mb-2">
+                            <label className="text-sm font-medium text-slate-700">Carbs</label>
+                            <span className="text-sm font-bold text-yellow-600">{carbsPercent}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={carbsPercent}
+                            onChange={(e) => setCarbsPercent(parseInt(e.target.value))}
+                            className="w-full"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between mb-2">
+                            <label className="text-sm font-medium text-slate-700">Fat</label>
+                            <span className="text-sm font-bold text-orange-600">{fatPercent}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={fatPercent}
+                            onChange={(e) => setFatPercent(parseInt(e.target.value))}
+                            className="w-full"
+                          />
+                        </div>
+
+                        <p className="text-xs text-slate-600 text-center">
+                          Total: {proteinPercent + carbsPercent + fatPercent}%
+                        </p>
+
+                        <button
+                          onClick={handleCalculate}
+                          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition text-sm"
+                        >
+                          Apply Changes
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <button
                   onClick={handleCalculate}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition shadow-sm"
@@ -407,22 +520,49 @@ const MealPlannerApp = () => {
               <>
                 <div className="bg-white rounded-lg shadow-sm p-6">
                   <h2 className="text-lg font-semibold text-slate-900 mb-6">Your Numbers</h2>
+
+                  {/* Primary metrics */}
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className="bg-blue-50 rounded-lg p-4">
                       <p className="text-sm text-slate-600">Daily Calorie Target</p>
-                      <p className="text-3xl font-bold text-blue-600">{tdee}</p>
+                      <p className="text-3xl font-bold text-blue-600">{macros?.calories || tdee}</p>
                       <p className="text-xs text-slate-500 mt-1">kcal/day</p>
                     </div>
                     <div className="bg-slate-50 rounded-lg p-4">
-                      <p className="text-sm text-slate-600">Suggested Deficit/Surplus</p>
+                      <p className="text-sm text-slate-600">Deficit/Surplus</p>
                       <p className="text-xl font-semibold text-slate-900">
                         {goal === 'loss' ? '-500 kcal' : goal === 'gain' ? '+500 kcal' : '±0 kcal'}
                       </p>
-                      <p className="text-xs text-slate-500 mt-1">moderate pace</p>
+                      <p className="text-xs text-slate-500 mt-1">per day</p>
                     </div>
                   </div>
 
+                  {/* Fat loss timeline */}
+                  {fatLossTimeline && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+                      <h3 className="font-semibold text-orange-900 mb-3">Fat Loss Timeline</h3>
+                      <div className="grid grid-cols-3 gap-3 text-sm">
+                        <div>
+                          <p className="text-orange-700 text-xs font-medium">To Lose</p>
+                          <p className="text-xl font-bold text-orange-600">{fatLossTimeline.weightToLose} {unit === 'imperial' ? 'lbs' : 'kg'}</p>
+                        </div>
+                        <div>
+                          <p className="text-orange-700 text-xs font-medium">Weekly Rate</p>
+                          <p className="text-xl font-bold text-orange-600">{fatLossTimeline.weeklyLossRate} {unit === 'imperial' ? 'lbs' : 'kg'}</p>
+                        </div>
+                        <div>
+                          <p className="text-orange-700 text-xs font-medium">Days to Goal</p>
+                          <p className="text-xl font-bold text-orange-600">{Math.round(fatLossTimeline.daysToGoal / 7)}w</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-orange-700 mt-3">
+                        At ~{fatLossTimeline.weeklyLossRate} {unit === 'imperial' ? 'lbs' : 'kg'}/week, you'll reach your goal in approximately {Math.round(fatLossTimeline.daysToGoal / 30)} months.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Macros */}
+                  <h3 className="font-semibold text-slate-900 mb-4">Daily Macro Targets</h3>
                   <div className="space-y-3">
                     <div>
                       <div className="flex justify-between mb-2">
@@ -432,10 +572,10 @@ const MealPlannerApp = () => {
                       <div className="w-full bg-slate-200 rounded-full h-2">
                         <div
                           className="bg-red-500 h-2 rounded-full"
-                          style={{ width: '40%' }}
+                          style={{ width: `${macros.percentages.protein}%` }}
                         />
                       </div>
-                      <p className="text-xs text-slate-500 mt-1">~40% of calories</p>
+                      <p className="text-xs text-slate-500 mt-1">{macros.percentages.protein}% of calories</p>
                     </div>
 
                     <div>
@@ -446,10 +586,10 @@ const MealPlannerApp = () => {
                       <div className="w-full bg-slate-200 rounded-full h-2">
                         <div
                           className="bg-yellow-500 h-2 rounded-full"
-                          style={{ width: '40%' }}
+                          style={{ width: `${macros.percentages.carbs}%` }}
                         />
                       </div>
-                      <p className="text-xs text-slate-500 mt-1">~40% of calories</p>
+                      <p className="text-xs text-slate-500 mt-1">{macros.percentages.carbs}% of calories</p>
                     </div>
 
                     <div>
@@ -460,10 +600,10 @@ const MealPlannerApp = () => {
                       <div className="w-full bg-slate-200 rounded-full h-2">
                         <div
                           className="bg-orange-500 h-2 rounded-full"
-                          style={{ width: '20%' }}
+                          style={{ width: `${macros.percentages.fat}%` }}
                         />
                       </div>
-                      <p className="text-xs text-slate-500 mt-1">~20% of calories</p>
+                      <p className="text-xs text-slate-500 mt-1">{macros.percentages.fat}% of calories</p>
                     </div>
                   </div>
                 </div>
@@ -474,18 +614,20 @@ const MealPlannerApp = () => {
                     <h2 className="text-lg font-semibold text-slate-900">7-Day Meal Plan</h2>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setMealPlan(generateMealPlan(macros))}
-                        className="p-2 hover:bg-slate-100 rounded-lg transition"
-                        title="Regenerate plan"
+                        onClick={handleRegenerateMealPlan}
+                        className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition text-sm"
+                        title="Generate new meal plan"
                       >
-                        <RefreshCw className="w-5 h-5 text-slate-600" />
+                        <RefreshCw className="w-4 h-4" />
+                        New Plan
                       </button>
                       <button
                         onClick={handleShare}
-                        className="p-2 hover:bg-slate-100 rounded-lg transition"
+                        className="flex items-center gap-2 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium rounded-lg transition text-sm"
                         title="Share plan"
                       >
-                        <Share2 className="w-5 h-5 text-slate-600" />
+                        <Share2 className="w-4 h-4" />
+                        Share
                       </button>
                     </div>
                   </div>
@@ -497,28 +639,32 @@ const MealPlannerApp = () => {
                     </div>
                   )}
 
-                  <div className="space-y-4">
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
                     {mealPlan.map((dayPlan, dayIndex) => (
                       <div key={dayIndex} className="border border-slate-200 rounded-lg p-4 hover:border-slate-300 transition">
                         <div className="flex justify-between items-start mb-3">
                           <div>
                             <h3 className="font-semibold text-slate-900">{dayPlan.day}</h3>
-                            <p className="text-sm text-slate-600">
-                              {dayPlan.totals.protein}g P | {dayPlan.totals.carbs}g C | {dayPlan.totals.fat}g F
+                            <p className="text-xs text-slate-500 mt-1">
+                              {dayPlan.totals.protein}g P · {dayPlan.totals.carbs}g C · {dayPlan.totals.fat}g F
                             </p>
                           </div>
                         </div>
 
                         <div className="space-y-2 text-sm">
                           {['breakfast', 'lunch', 'dinner', 'snack'].map((mealType) => (
-                            <div key={mealType} className="flex justify-between items-center text-slate-700 bg-slate-50 px-3 py-2 rounded">
-                              <div>
-                                <span className="capitalize font-medium text-slate-600">{mealType}: </span>
-                                <span>{dayPlan.meals[mealType].name}</span>
+                            <div key={mealType} className="flex justify-between items-center text-slate-700 bg-slate-50 px-3 py-2 rounded text-xs">
+                              <div className="flex-1">
+                                <p className="capitalize font-medium text-slate-600 mb-1">{mealType}</p>
+                                <p className="text-slate-800">{dayPlan.meals[mealType].name}</p>
+                                <p className="text-slate-500 mt-1">
+                                  {dayPlan.meals[mealType].grams}g · {dayPlan.meals[mealType].calories} kcal ·
+                                  {dayPlan.meals[mealType].protein}P/{dayPlan.meals[mealType].carbs}C/{dayPlan.meals[mealType].fat}F
+                                </p>
                               </div>
                               <button
                                 onClick={() => handleSwapMeal(dayIndex, mealType)}
-                                className="p-1 hover:bg-slate-200 rounded transition"
+                                className="p-2 hover:bg-slate-200 rounded transition flex-shrink-0 ml-2"
                                 title="Swap meal"
                               >
                                 <RefreshCw className="w-4 h-4 text-slate-500" />
