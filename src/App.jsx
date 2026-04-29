@@ -20,10 +20,10 @@ const MealPlannerApp = () => {
   const [shareUrl, setShareUrl] = useState('');
   const [expandedMacroSlider, setExpandedMacroSlider] = useState(false);
 
-  // Macro slider state (as percentages)
-  const [proteinPercent, setProteinPercent] = useState(40);
-  const [carbsPercent, setCarbsPercent] = useState(40);
-  const [fatPercent, setFatPercent] = useState(20);
+  // Macro slider state (as percentages) - initialized based on goal
+  const [proteinPercent, setProteinPercent] = useState(goal === 'loss' ? 40 : goal === 'gain' ? 25 : 30);
+  const [carbsPercent, setCarbsPercent] = useState(goal === 'loss' ? 40 : goal === 'gain' ? 45 : 40);
+  const [fatPercent, setFatPercent] = useState(goal === 'loss' ? 20 : goal === 'gain' ? 30 : 30);
 
   // Weekly check-in state
   const [weeklyWeights, setWeeklyWeights] = useState([]);
@@ -213,19 +213,29 @@ const MealPlannerApp = () => {
 
   // Calculate macros based on slider percentages
   const calculateMacros = (tdeeValue) => {
-    const proteinCalories = (tdeeValue * proteinPercent) / 100;
-    const carbCalories = (tdeeValue * carbsPercent) / 100;
-    const fatCalories = (tdeeValue * fatPercent) / 100;
+    // Validate macro percentages don't exceed 100%
+    const totalPercent = proteinPercent + carbsPercent + fatPercent;
+    const proteinP = (proteinPercent / totalPercent) * 100;
+    const carbsP = (carbsPercent / totalPercent) * 100;
+    const fatP = (fatPercent / totalPercent) * 100;
+
+    // Apply deficit for fat loss goals
+    const targetCalories = goal === 'loss' ? Math.round(tdeeValue - 500) : tdeeValue;
+
+    const proteinCalories = (targetCalories * proteinP) / 100;
+    const carbCalories = (targetCalories * carbsP) / 100;
+    const fatCalories = (targetCalories * fatP) / 100;
 
     return {
       protein: Math.round(proteinCalories / 4),
       carbs: Math.round(carbCalories / 4),
       fat: Math.round(fatCalories / 9),
-      calories: tdeeValue,
+      calories: targetCalories,
+      tdee: tdeeValue,
       percentages: {
-        protein: proteinPercent,
-        carbs: carbsPercent,
-        fat: fatPercent,
+        protein: Math.round(proteinP),
+        carbs: Math.round(carbsP),
+        fat: Math.round(fatP),
       },
     };
   };
@@ -604,12 +614,13 @@ const MealPlannerApp = () => {
                           </div>
                           <input
                             type="range"
-                            min="0"
-                            max="100"
+                            min="10"
+                            max="50"
                             value={proteinPercent}
                             onChange={(e) => setProteinPercent(parseInt(e.target.value))}
                             className="w-full"
                           />
+                          <p className="text-xs text-slate-500 mt-1">10-50% range</p>
                         </div>
 
                         <div>
@@ -619,12 +630,13 @@ const MealPlannerApp = () => {
                           </div>
                           <input
                             type="range"
-                            min="0"
-                            max="100"
+                            min="20"
+                            max="60"
                             value={carbsPercent}
                             onChange={(e) => setCarbsPercent(parseInt(e.target.value))}
                             className="w-full"
                           />
+                          <p className="text-xs text-slate-500 mt-1">20-60% range</p>
                         </div>
 
                         <div>
@@ -634,16 +646,17 @@ const MealPlannerApp = () => {
                           </div>
                           <input
                             type="range"
-                            min="0"
-                            max="100"
+                            min="15"
+                            max="40"
                             value={fatPercent}
                             onChange={(e) => setFatPercent(parseInt(e.target.value))}
                             className="w-full"
                           />
+                          <p className="text-xs text-slate-500 mt-1">15-40% range</p>
                         </div>
 
-                        <p className="text-xs text-slate-600 text-center">
-                          Total: {proteinPercent + carbsPercent + fatPercent}%
+                        <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded text-center">
+                          <strong>Note:</strong> Percentages will auto-normalize to 100% when calculated
                         </p>
 
                         <button
@@ -679,8 +692,14 @@ const MealPlannerApp = () => {
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className="bg-blue-50 rounded-lg p-4">
                       <p className="text-sm text-slate-600">Daily Calorie Target</p>
-                      <p className="text-3xl font-bold text-blue-600">{macros?.calories || tdee}</p>
+                      <p className="text-3xl font-bold text-blue-600">{macros?.calories || '-'}</p>
                       <p className="text-xs text-slate-500 mt-1">kcal/day</p>
+                      {macros?.tdee && (
+                        <p className="text-xs text-slate-400 mt-2">Maintenance: {macros.tdee} kcal</p>
+                      )}
+                      <p className="text-xs text-slate-400 mt-2 italic">
+                        📊 This is an estimate (typically ±300 kcal). Refine by tracking weekly weights.
+                      </p>
                     </div>
                     <div className="bg-slate-50 rounded-lg p-4">
                       <p className="text-sm text-slate-600">Deficit/Surplus</p>
@@ -688,6 +707,11 @@ const MealPlannerApp = () => {
                         {goal === 'loss' ? '-500 kcal' : goal === 'gain' ? '+500 kcal' : '±0 kcal'}
                       </p>
                       <p className="text-xs text-slate-500 mt-1">per day</p>
+                      {weeklyWeights.length > 0 && (
+                        <p className="text-xs text-slate-400 mt-2">
+                          {weeklyWeights.length} week{weeklyWeights.length !== 1 ? 's' : ''} tracked
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -717,43 +741,58 @@ const MealPlannerApp = () => {
 
                   {/* Weekly Check-in */}
                   {macros && goal === 'loss' && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                      <h3 className="font-semibold text-blue-900 mb-3">Weekly Check-in</h3>
+                    <div className="bg-blue-50 border border-blue-300 rounded-lg p-4 mb-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="font-semibold text-blue-900">Weekly Check-in</h3>
+                          <p className="text-xs text-blue-700 mt-1">🎯 Log your weight weekly. After 3-4 weeks, we'll refine your calorie target based on actual results.</p>
+                        </div>
+                      </div>
 
-                      {getWeightTrendAnalysis() && (
+                      {getWeightTrendAnalysis() ? (
                         <div className="mb-4 p-3 bg-white rounded border border-blue-100">
                           {(() => {
                             const analysis = getWeightTrendAnalysis();
                             return (
                               <>
                                 <p className="text-xs font-medium text-blue-700 mb-2">
-                                  Based on {analysis.weeksOfData} week{analysis.weeksOfData !== 1 ? 's' : ''} of data:
+                                  📈 {analysis.weeksOfData} week{analysis.weeksOfData !== 1 ? 's' : ''} of data analyzed:
                                 </p>
-                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                <div className="grid grid-cols-3 gap-2 text-sm">
                                   <div>
-                                    <p className="text-blue-600 text-xs">Expected Loss</p>
-                                    <p className="font-bold text-blue-900">{analysis.expectedLossPerWeek} {unit === 'imperial' ? 'lb' : 'kg'}/week</p>
+                                    <p className="text-blue-600 text-xs">Target</p>
+                                    <p className="font-bold text-blue-900">{analysis.expectedLossPerWeek} {unit === 'imperial' ? 'lb' : 'kg'}/wk</p>
                                   </div>
                                   <div>
-                                    <p className="text-blue-600 text-xs">Actual Loss</p>
+                                    <p className="text-blue-600 text-xs">Actual</p>
                                     <p className={`font-bold ${analysis.onTrack ? 'text-green-600' : 'text-orange-600'}`}>
-                                      {analysis.actualLossPerWeek} {unit === 'imperial' ? 'lb' : 'kg'}/week
+                                      {analysis.actualLossPerWeek} {unit === 'imperial' ? 'lb' : 'kg'}/wk
                                     </p>
                                   </div>
+                                  <div>
+                                    <p className="text-blue-600 text-xs">Total Loss</p>
+                                    <p className="font-bold text-blue-900">{analysis.totalLoss} {unit === 'imperial' ? 'lb' : 'kg'}</p>
+                                  </div>
                                 </div>
-                                {!analysis.onTrack && calorieAdjustment < 0 && (
+                                {analysis.weeksOfData >= 3 && !analysis.onTrack && calorieAdjustment < 0 && (
                                   <p className="text-xs text-orange-700 mt-2 bg-orange-50 p-2 rounded">
-                                    💡 <strong>Not quite on track:</strong> Try reducing calories by <strong>{Math.abs(calorieAdjustment)}</strong> to {macros.calories + calorieAdjustment} kcal/day.
+                                    💡 <strong>Adjustment suggested:</strong> Your actual loss is slower than expected. Try reducing to <strong>{macros.calories + calorieAdjustment} kcal/day</strong> (−{Math.abs(calorieAdjustment)} kcal).
                                   </p>
                                 )}
-                                {analysis.onTrack && (
+                                {analysis.weeksOfData >= 3 && analysis.onTrack && (
                                   <p className="text-xs text-green-700 mt-2 bg-green-50 p-2 rounded">
-                                    ✓ <strong>On track!</strong> Keep it up with current targets.
+                                    ✓ <strong>On track!</strong> Keep following your {macros.calories} kcal target.
                                   </p>
                                 )}
                               </>
                             );
                           })()}
+                        </div>
+                      ) : (
+                        <div className="mb-4 p-3 bg-blue-100 rounded border border-blue-200">
+                          <p className="text-xs text-blue-800">
+                            <strong>💡 Tip:</strong> Log at least 3 weeks of weekly weights to see if your calorie target needs adjustment. Most TDEE estimates are off by ±300 calories.
+                          </p>
                         </div>
                       )}
 
