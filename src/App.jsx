@@ -25,10 +25,6 @@ const MealPlannerApp = () => {
   const [carbsPercent, setCarbsPercent] = useState(goal === 'loss' ? 40 : goal === 'gain' ? 45 : 40);
   const [fatPercent, setFatPercent] = useState(goal === 'loss' ? 20 : goal === 'gain' ? 30 : 30);
 
-  // Weekly check-in state
-  const [weeklyWeights, setWeeklyWeights] = useState([]);
-  const [currentWeekWeight, setCurrentWeekWeight] = useState('');
-  const [calorieAdjustment, setCalorieAdjustment] = useState(0);
 
   // Meal database with detailed nutritional info and calorie-dense ingredient weights
   const mealDatabase = {
@@ -136,24 +132,6 @@ const MealPlannerApp = () => {
         ingredients: 'String cheese (28g), Whole grain crackers (50g)'
       },
     ],
-  };
-
-  // Load weigh-in history from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('weeklyWeights');
-    if (saved) {
-      try {
-        setWeeklyWeights(JSON.parse(saved));
-      } catch (e) {
-        console.error('Error loading weigh-in history:', e);
-      }
-    }
-  }, []);
-
-  // Save weigh-in history to localStorage
-  const saveWeighInHistory = (weights) => {
-    setWeeklyWeights(weights);
-    localStorage.setItem('weeklyWeights', JSON.stringify(weights));
   };
 
   // Load shared plan from URL
@@ -357,61 +335,51 @@ const MealPlannerApp = () => {
     }
   };
 
-  // Log weekly weigh-in and calculate adjustment
-  const handleLogWeight = () => {
-    if (!currentWeekWeight || !weight) return;
+  // Generate PDF of meal plan
+  const handleDownloadPDF = () => {
+    if (!mealPlan || !macros) return;
 
-    const newEntry = {
-      date: new Date().toISOString().split('T')[0],
-      weight: parseFloat(currentWeekWeight),
-    };
+    // Create PDF content
+    let pdfContent = `MEAL PLAN & NUTRITION TARGETS\n`;
+    pdfContent += `Generated: ${new Date().toLocaleDateString()}\n\n`;
 
-    const updated = [...weeklyWeights, newEntry];
-    saveWeighInHistory(updated);
+    pdfContent += `CALORIE & MACRO TARGETS\n`;
+    pdfContent += `Daily Calories: ${macros.calories} kcal\n`;
+    pdfContent += `Protein: ${macros.protein}g (${macros.percentages.protein}%)\n`;
+    pdfContent += `Carbs: ${macros.carbs}g (${macros.percentages.carbs}%)\n`;
+    pdfContent += `Fat: ${macros.fat}g (${macros.percentages.fat}%)\n\n`;
 
-    // Analyze trend if 2+ weeks of data
-    if (updated.length >= 2) {
-      const recentWeights = updated.slice(-4); // Last 4 weigh-ins
-      const firstWeight = recentWeights[0].weight;
-      const lastWeight = recentWeights[recentWeights.length - 1].weight;
-      const weeksOfData = recentWeights.length - 1;
-      const actualLossPerWeek = (firstWeight - lastWeight) / weeksOfData;
+    pdfContent += `7-DAY MEAL PLAN\n`;
+    pdfContent += `================\n\n`;
 
-      // Expected loss is 1 lb/week (or ~0.45 kg) for a -500 cal deficit
-      const expectedLossPerWeek = goal === 'loss' ? 1 : 0;
+    mealPlan.forEach((dayPlan) => {
+      pdfContent += `${dayPlan.day.toUpperCase()}\n`;
+      pdfContent += `Daily Totals: ${dayPlan.totals.protein}g P | ${dayPlan.totals.carbs}g C | ${dayPlan.totals.fat}g F\n\n`;
 
-      if (actualLossPerWeek < expectedLossPerWeek * 0.8 && actualLossPerWeek !== expectedLossPerWeek) {
-        // Underperforming: suggest -250 cal reduction
-        setCalorieAdjustment(-250);
-      } else if (actualLossPerWeek > expectedLossPerWeek * 1.2 && actualLossPerWeek > 0) {
-        // Overperforming: suggest +200 cal increase
-        setCalorieAdjustment(200);
-      } else {
-        setCalorieAdjustment(0);
-      }
-    }
+      ['breakfast', 'lunch', 'dinner', 'snack'].forEach((mealType) => {
+        const meal = dayPlan.meals[mealType];
+        pdfContent += `${mealType.charAt(0).toUpperCase() + mealType.slice(1)}\n`;
+        pdfContent += `${meal.name}\n`;
+        pdfContent += `${meal.grams}g | ${meal.calories} kcal | ${meal.protein}P/${meal.carbs}C/${meal.fat}F\n`;
+        pdfContent += `${meal.ingredients}\n\n`;
+      });
 
-    setCurrentWeekWeight('');
-  };
+      pdfContent += `---\n\n`;
+    });
 
-  // Get weight trend analysis
-  const getWeightTrendAnalysis = () => {
-    if (weeklyWeights.length < 2) return null;
+    pdfContent += `GROCERY LIST\n`;
+    pdfContent += `============\n`;
+    groceryList.forEach((item) => {
+      pdfContent += `☐ ${item}\n`;
+    });
 
-    const recentWeights = weeklyWeights.slice(-4);
-    const firstWeight = recentWeights[0].weight;
-    const lastWeight = recentWeights[recentWeights.length - 1].weight;
-    const weeksOfData = recentWeights.length - 1;
-    const actualLossPerWeek = (firstWeight - lastWeight) / weeksOfData;
-    const expectedLossPerWeek = goal === 'loss' ? 1 : 0;
-
-    return {
-      actualLossPerWeek: Math.round(actualLossPerWeek * 10) / 10,
-      expectedLossPerWeek,
-      weeksOfData,
-      totalLoss: Math.round((firstWeight - lastWeight) * 10) / 10,
-      onTrack: actualLossPerWeek >= expectedLossPerWeek * 0.8,
-    };
+    // Create blob and download
+    const blob = new Blob([pdfContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `meal-plan-${new Date().toISOString().split('T')[0]}.txt`;
+    a.click();
   };
 
   // Handle share
@@ -464,8 +432,6 @@ const MealPlannerApp = () => {
     a.click();
   };
 
-  // Get fat loss timeline if applicable
-  const fatLossTimeline = goal === 'loss' && tdee ? calculateFatLossTimeline(tdee) : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
@@ -688,18 +654,12 @@ const MealPlannerApp = () => {
                 <div className="bg-white rounded-lg shadow-sm p-6">
                   <h2 className="text-lg font-semibold text-slate-900 mb-6">Your Numbers</h2>
 
-                  {/* Primary metrics */}
+                  {/* Primary metrics - Simplified */}
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className="bg-blue-50 rounded-lg p-4">
                       <p className="text-sm text-slate-600">Daily Calorie Target</p>
                       <p className="text-3xl font-bold text-blue-600">{macros?.calories || '-'}</p>
                       <p className="text-xs text-slate-500 mt-1">kcal/day</p>
-                      {macros?.tdee && (
-                        <p className="text-xs text-slate-400 mt-2">Maintenance: {macros.tdee} kcal</p>
-                      )}
-                      <p className="text-xs text-slate-400 mt-2 italic">
-                        📊 This is an estimate (typically ±300 kcal). Refine by tracking weekly weights.
-                      </p>
                     </div>
                     <div className="bg-slate-50 rounded-lg p-4">
                       <p className="text-sm text-slate-600">Deficit/Surplus</p>
@@ -707,126 +667,8 @@ const MealPlannerApp = () => {
                         {goal === 'loss' ? '-500 kcal' : goal === 'gain' ? '+500 kcal' : '±0 kcal'}
                       </p>
                       <p className="text-xs text-slate-500 mt-1">per day</p>
-                      {weeklyWeights.length > 0 && (
-                        <p className="text-xs text-slate-400 mt-2">
-                          {weeklyWeights.length} week{weeklyWeights.length !== 1 ? 's' : ''} tracked
-                        </p>
-                      )}
                     </div>
                   </div>
-
-                  {/* Fat loss timeline */}
-                  {fatLossTimeline && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-                      <h3 className="font-semibold text-orange-900 mb-3">Fat Loss Timeline</h3>
-                      <div className="grid grid-cols-3 gap-3 text-sm">
-                        <div>
-                          <p className="text-orange-700 text-xs font-medium">To Lose</p>
-                          <p className="text-xl font-bold text-orange-600">{fatLossTimeline.weightToLose} {unit === 'imperial' ? 'lbs' : 'kg'}</p>
-                        </div>
-                        <div>
-                          <p className="text-orange-700 text-xs font-medium">Weekly Rate</p>
-                          <p className="text-xl font-bold text-orange-600">{fatLossTimeline.weeklyLossRate} {unit === 'imperial' ? 'lbs' : 'kg'}</p>
-                        </div>
-                        <div>
-                          <p className="text-orange-700 text-xs font-medium">Days to Goal</p>
-                          <p className="text-xl font-bold text-orange-600">{Math.round(fatLossTimeline.daysToGoal / 7)}w</p>
-                        </div>
-                      </div>
-                      <p className="text-xs text-orange-700 mt-3">
-                        At ~{fatLossTimeline.weeklyLossRate} {unit === 'imperial' ? 'lbs' : 'kg'}/week, you'll reach your goal in approximately {Math.round(fatLossTimeline.daysToGoal / 30)} months.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Weekly Check-in */}
-                  {macros && goal === 'loss' && (
-                    <div className="bg-blue-50 border border-blue-300 rounded-lg p-4 mb-6">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h3 className="font-semibold text-blue-900">Weekly Check-in</h3>
-                          <p className="text-xs text-blue-700 mt-1">🎯 Log your weight weekly. After 3-4 weeks, we'll refine your calorie target based on actual results.</p>
-                        </div>
-                      </div>
-
-                      {getWeightTrendAnalysis() ? (
-                        <div className="mb-4 p-3 bg-white rounded border border-blue-100">
-                          {(() => {
-                            const analysis = getWeightTrendAnalysis();
-                            return (
-                              <>
-                                <p className="text-xs font-medium text-blue-700 mb-2">
-                                  📈 {analysis.weeksOfData} week{analysis.weeksOfData !== 1 ? 's' : ''} of data analyzed:
-                                </p>
-                                <div className="grid grid-cols-3 gap-2 text-sm">
-                                  <div>
-                                    <p className="text-blue-600 text-xs">Target</p>
-                                    <p className="font-bold text-blue-900">{analysis.expectedLossPerWeek} {unit === 'imperial' ? 'lb' : 'kg'}/wk</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-blue-600 text-xs">Actual</p>
-                                    <p className={`font-bold ${analysis.onTrack ? 'text-green-600' : 'text-orange-600'}`}>
-                                      {analysis.actualLossPerWeek} {unit === 'imperial' ? 'lb' : 'kg'}/wk
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-blue-600 text-xs">Total Loss</p>
-                                    <p className="font-bold text-blue-900">{analysis.totalLoss} {unit === 'imperial' ? 'lb' : 'kg'}</p>
-                                  </div>
-                                </div>
-                                {analysis.weeksOfData >= 3 && !analysis.onTrack && calorieAdjustment < 0 && (
-                                  <p className="text-xs text-orange-700 mt-2 bg-orange-50 p-2 rounded">
-                                    💡 <strong>Adjustment suggested:</strong> Your actual loss is slower than expected. Try reducing to <strong>{macros.calories + calorieAdjustment} kcal/day</strong> (−{Math.abs(calorieAdjustment)} kcal).
-                                  </p>
-                                )}
-                                {analysis.weeksOfData >= 3 && analysis.onTrack && (
-                                  <p className="text-xs text-green-700 mt-2 bg-green-50 p-2 rounded">
-                                    ✓ <strong>On track!</strong> Keep following your {macros.calories} kcal target.
-                                  </p>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      ) : (
-                        <div className="mb-4 p-3 bg-blue-100 rounded border border-blue-200">
-                          <p className="text-xs text-blue-800">
-                            <strong>💡 Tip:</strong> Log at least 3 weeks of weekly weights to see if your calorie target needs adjustment. Most TDEE estimates are off by ±300 calories.
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="flex gap-2">
-                        <input
-                          type="number"
-                          step="0.1"
-                          placeholder={`Enter this week's weight (${unit === 'imperial' ? 'lbs' : 'kg'})`}
-                          value={currentWeekWeight}
-                          onChange={(e) => setCurrentWeekWeight(e.target.value)}
-                          className="flex-1 px-3 py-2 border border-blue-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <button
-                          onClick={handleLogWeight}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm transition"
-                        >
-                          Log Weight
-                        </button>
-                      </div>
-
-                      {weeklyWeights.length > 0 && (
-                        <div className="mt-3 p-2 bg-white rounded border border-blue-100 text-xs">
-                          <p className="text-blue-700 font-medium mb-2">Recent weigh-ins:</p>
-                          <div className="space-y-1">
-                            {weeklyWeights.slice(-4).map((entry, idx) => (
-                              <p key={idx} className="text-blue-600">
-                                {new Date(entry.date).toLocaleDateString()}: <strong>{entry.weight}</strong> {unit === 'imperial' ? 'lbs' : 'kg'}
-                              </p>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   {/* Macros */}
                   <h3 className="font-semibold text-slate-900 mb-4">Daily Macro Targets</h3>
@@ -887,6 +729,14 @@ const MealPlannerApp = () => {
                       >
                         <RefreshCw className="w-4 h-4" />
                         New Plan
+                      </button>
+                      <button
+                        onClick={handleDownloadPDF}
+                        className="flex items-center gap-2 px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 font-medium rounded-lg transition text-sm"
+                        title="Download meal plan"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download
                       </button>
                       <button
                         onClick={handleShare}
